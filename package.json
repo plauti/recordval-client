@@ -1,0 +1,13 @@
+{
+  "name": "@plauti/recordval-client",
+  "version": "1.0.0",
+  "description": "api client for accessing record validation functionalities",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plauti/recordval-client.git"
+  },
+  "homepage": "https://github.com/plauti/recordval-client#readme",
+  "author": "Plauti BV",
+  "license": "MIT",
+  "main": "index.js"
+}

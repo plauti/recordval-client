@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="index.js"></script>
+</head>
+<body>
+<script>
+  const rvClient = createRvClient(
+      'orgId',
+      'publicKey',
+      'privateKey',
+  );
+  rvClient.fetchMyCredits();
+
+  // const phoneNumberAsString = '+31-24-3611111';
+  // const twoCharacterCountryCode = 'NL';
+  // rvClient.validatePhone(phoneNumberAsString, twoCharacterCountryCode);
+</script>
+</body>
+</html>
