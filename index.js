@@ -2,15 +2,15 @@ const createRvClient = (
     orgId,
     publicKey,
     privateKey,
-    apiBaseUrl = 'https://dq-api.plauti.io',
+    apiBaseUrl = 'https://jarvis-dev.plauti.io/v3', // TODO: Update to prod url once Jarvis is released 
+    orgType = 'SF'
 ) => {
-  const myCreditsEndpoint = `${apiBaseUrl}/v1/info/credit`;
-  // V1 endpoints are deprecated
-  const emailValidateEndpoint = `${apiBaseUrl}/v2/email/validate`;
-  const phoneValidateEndpoint = `${apiBaseUrl}/v2/phone/validate`;
-  const addressValidateEndpoint = `${apiBaseUrl}/v2/address/validate`;
-  const addressFindEndpoint = `${apiBaseUrl}/v2/address/find`;
-  const addressRetrieveEndpoint = `${apiBaseUrl}/v2/address/retrieve`;
+  const myCreditsEndpoint = `${apiBaseUrl}/info/credits`;
+  const emailValidateEndpoint = `${apiBaseUrl}/validation/email/validate`;
+  const phoneValidateEndpoint = `${apiBaseUrl}/validation/phone/validate`;
+  const addressValidateEndpoint = `${apiBaseUrl}/validation/address/validate`;
+  const addressFindEndpoint = `${apiBaseUrl}/validation/address/search`;
+  const addressRetrieveEndpoint = `${apiBaseUrl}/validation/address/retrieve`;
 
   if (!publicKey || !privateKey) {
     throw Error(
@@ -19,23 +19,26 @@ const createRvClient = (
     );
   }
 
-  const sha1 = async (seed) => {
+  const sha256 = async (seed) => {
     const enc = new TextEncoder();
-    const hash = await crypto.subtle.digest('SHA-1', enc.encode(seed));
+    const hash = await crypto.subtle.digest('SHA-256', enc.encode(seed));
     return Array.from(new Uint8Array(hash)).
         map(v => v.toString(16).padStart(2, '0')).
         join('');
   };
   const getRequestOptions = async () => {
     // The number of milliseconds since January 1, 1970, 00:00:00 GMT
-    const timestamp = Date.now();
-    const hash = await sha1(publicKey + timestamp.toString() + privateKey);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signaturePayload = `${orgType}:${orgId}:${timestamp}:${privateKey}`
+    const hash = await sha256(signaturePayload);
+
     return {
       'headers': {
-        'plauti-dq-time': timestamp.toString(),
-        'plauti-dq-apikey': publicKey,
-        'plauti-dq-hash': hash,
-        'plauti-dq-org': orgId,
+        'x-jarvis-timestamp': timestamp.toString(),
+        'x-jarvis-apikey': publicKey,
+        'x-jarvis-signature': hash,
+        'x-jarvis-orgid': orgId,
+        'x-jarvis-orgtype': orgType,
         'Content-Type': 'application/json',
       },
     };
@@ -52,10 +55,10 @@ const createRvClient = (
     ) {
       const requestOptions = await getRequestOptions();
       requestOptions.method = 'POST';
-      requestOptions.body = {
+      requestOptions.body = JSON.stringify({
         emailAddress,
         note,
-      };
+      });
       return fetch(emailValidateEndpoint, requestOptions);
     },
     async validatePhone(
@@ -132,7 +135,7 @@ const createRvClient = (
     },
     async retrieveAddress(
         container,
-        ishouseNumber = false,
+        isHouseNumber = false,
         isHouseNumberAddition = false,
         addressSeparator = ', ',
         geocode = false,
@@ -142,7 +145,7 @@ const createRvClient = (
       requestOptions.method = 'POST';
       requestOptions.body = JSON.stringify({
         container,
-        ishouseNumber,
+        isHouseNumber,
         isHouseNumberAddition,
         addressSeparator,
         geocode,
