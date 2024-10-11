@@ -19,22 +19,73 @@ const createRvClient = (
     );
   }
 
-  const sha256 = async (seed) => {
-    const enc = new TextEncoder();
-    const hash = await crypto.subtle.digest('SHA-256', enc.encode(seed));
-    return Array.from(new Uint8Array(hash)).
-        map(v => v.toString(16).padStart(2, '0')).
-        join('');
-  };
+  const pemToArrayBuffer = pem => {
+    // Remove the PEM header and footer
+    const b = pem.replace(/-----(BEGIN|END) [A-Z ]+-----/g, '').replace(/\s+/g, '');
+    const binaryString = window.atob(b);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  const importPrivateKey =  async (privateKeyBuffer) => {
+    const key = await window.crypto.subtle.importKey(
+      "pkcs8",
+      privateKeyBuffer,
+      {
+          name: "RSASSA-PKCS1-v1_5",
+          hash: { name: "SHA-256" },
+      },
+      true, 
+      ["sign"] 
+    );
+
+    return key;
+  }
+
+  const encodePayload = (payload) => {
+    const encoder = new TextEncoder();
+    return encoder.encode(payload);
+  }
+
+  const sign = async (privateKey, encodedPayload) => {
+    const signature = await window.crypto.subtle.sign(
+        {
+            name: "RSASSA-PKCS1-v1_5",
+        },
+        privateKey,
+        encodedPayload
+    );
+
+    return signature;
+  }
+
+  const toHex = data => {
+    return Array.from(new Uint8Array(data))
+    .map(b => ('00' + b.toString(16)).slice(-2))
+    .join('');
+  }
+
+  async function createSignature(payload, privateKeyPem) {
+    const privateKeyBuffer = pemToArrayBuffer(privateKeyPem);
+    const importedPrivateKey = await importPrivateKey(privateKeyBuffer)
+    const encodeData = encodePayload(payload)
+    const signature = await sign(importedPrivateKey, encodeData)
+
+    return toHex(signature);
+  }
+
   const getRequestOptions = async () => {
-    // The number of milliseconds since January 1, 1970, 00:00:00 GMT
     const timestamp = Math.floor(Date.now() / 1000);
-    const signaturePayload = `${orgType}:${orgId}:${timestamp}:${privateKey}`
-    const hash = await sha256(signaturePayload);
+    const signaturePayload = `${orgType}:${orgId}:${timestamp}`
+    const hash = await createSignature(signaturePayload, privateKey);
 
     return {
       'headers': {
-        'x-jarvis-timestamp': timestamp.toString(),
+        'x-jarvis-timestamp': timestamp,
         'x-jarvis-apikey': publicKey,
         'x-jarvis-signature': hash,
         'x-jarvis-orgid': orgId,

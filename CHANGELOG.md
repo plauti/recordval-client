@@ -44,3 +44,5 @@ const validateEmailResponse = {
   advice: 'GREEN' | 'AMBER' | 'RED'
 };
 ````
+
+* The private key now supports PKCS8 format instead of PKCS1.
