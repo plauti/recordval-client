@@ -69,7 +69,7 @@ const createRvClient = (
     .join('');
   }
 
-  async function createSignature(payload, privateKeyPem) {
+  const createSignature = async (payload, privateKeyPem) => {
     const privateKeyBuffer = pemToArrayBuffer(privateKeyPem);
     const importedPrivateKey = await importPrivateKey(privateKeyBuffer)
     const encodeData = encodePayload(payload)
