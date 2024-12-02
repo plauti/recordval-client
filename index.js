@@ -2,7 +2,7 @@ const createRvClient = (
     orgId,
     publicKey,
     privateKey,
-    apiBaseUrl = 'https://jarvis-dev.plauti.io/v3', // TODO: Update to prod url once Jarvis is released 
+    apiBaseUrl = 'jarvis.plauti.com/v3', 
     orgType = 'SF'
 ) => {
   const myCreditsEndpoint = `${apiBaseUrl}/info/credits`;
