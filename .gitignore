@@ -2,3 +2,6 @@
 .idea
 
 index.html
+.env
+
+node_modules

@@ -1,8 +1,9 @@
 const createRvClient = (
-    orgId,
-    publicKey,
-    privateKey,
-    apiBaseUrl = 'https://dq-api.plauti.io',
+  orgId,
+  publicKey,
+  privateKey,
+  apiBaseUrl = "https://jarvis.plauti.com/v3",
+  orgType = "SF"
 ) => {
   const myCreditsEndpoint = `${apiBaseUrl}/v1/info/credit`;
   // V1 endpoints are deprecated
@@ -14,31 +15,107 @@ const createRvClient = (
 
   if (!publicKey || !privateKey) {
     throw Error(
-        'Provide a publicKey and privateKey to create a new rv api client. ' +
-        'These can be provided to you by contacting the Plauti support.',
+      "Provide a publicKey and privateKey to create a new rv api client. " +
+        "These can be provided to you by contacting the Plauti support."
     );
   }
 
-  const sha1 = async (seed) => {
-    const enc = new TextEncoder();
-    const hash = await crypto.subtle.digest('SHA-1', enc.encode(seed));
-    return Array.from(new Uint8Array(hash)).
-        map(v => v.toString(16).padStart(2, '0')).
-        join('');
+  const pemToArrayBuffer = (pem) => {
+    try {
+      // Remove the PEM header and footer
+      const b = pem
+        .replace(/-----(BEGIN|END) [A-Z ]+-----/g, "")
+        .replace(/\s+/g, "");
+      const binaryString = atob(b);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    } catch (error) {
+      console.error("Error processing private key:", error);
+      throw error;
+    }
   };
-  const getRequestOptions = async () => {
-    // The number of milliseconds since January 1, 1970, 00:00:00 GMT
-    const timestamp = Date.now();
-    const hash = await sha1(publicKey + timestamp.toString() + privateKey);
-    return {
-      'headers': {
-        'plauti-dq-time': timestamp.toString(),
-        'plauti-dq-apikey': publicKey,
-        'plauti-dq-hash': hash,
-        'plauti-dq-org': orgId,
-        'Content-Type': 'application/json',
+
+  const importPrivateKey = async (privateKeyBuffer) => {
+    try {
+      const key = await crypto.subtle.importKey(
+        "pkcs8",
+        privateKeyBuffer,
+        {
+          name: "RSASSA-PKCS1-v1_5",
+          hash: { name: "SHA-256" },
+        },
+        true,
+        ["sign"]
+      );
+
+      return key;
+    } catch (error) {
+      console.error("Key import error:", error);
+      throw error;
+    }
+  };
+
+  const encodePayload = (payload) => {
+    const encoder = new TextEncoder();
+    return encoder.encode(payload);
+  };
+
+  const sign = async (privateKey, encodedPayload) => {
+    const signature = await crypto.subtle.sign(
+      {
+        name: "RSASSA-PKCS1-v1_5",
       },
-    };
+      privateKey,
+      encodedPayload
+    );
+
+    return signature;
+  };
+
+  const toHex = (data) => {
+    return Array.from(new Uint8Array(data))
+      .map((b) => ("00" + b.toString(16)).slice(-2))
+      .join("");
+  };
+
+  const createSignature = async (payload, privateKeyPem) => {
+    try {
+      const privateKeyBuffer = pemToArrayBuffer(privateKeyPem);
+      const importedPrivateKey = await importPrivateKey(privateKeyBuffer);
+      const encodeData = encodePayload(payload);
+      const signature = await sign(importedPrivateKey, encodeData);
+      const hexSignature = toHex(signature);
+      return hexSignature;
+    } catch (error) {
+      console.error("Signature creation error:", error);
+      throw error;
+    }
+  };
+
+  const getRequestOptions = async () => {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signaturePayload = `${orgType}:${orgId}:${timestamp}`;
+      const hash = await createSignature(signaturePayload, privateKey);
+
+      const headers = {
+        "x-jarvis-timestamp": timestamp,
+        "x-jarvis-apikey": publicKey,
+        "x-jarvis-signature": hash,
+        "x-jarvis-orgid": orgId,
+        "x-jarvis-orgtype": orgType,
+        "Content-Type": "application/json",
+      };
+
+      return { headers };
+    } catch (error) {
+      console.error("Error creating request options:", error);
+      throw error;
+    }
   };
 
   return {
@@ -46,26 +123,18 @@ const createRvClient = (
       const requestOptions = await getRequestOptions();
       return fetch(myCreditsEndpoint, requestOptions);
     },
-    async validateEmail(
-        emailAddress,
-        note = '',
-    ) {
+    async validateEmail(emailAddress, note = "") {
       const requestOptions = await getRequestOptions();
-      requestOptions.method = 'POST';
-      requestOptions.body = {
+      requestOptions.method = "POST";
+      requestOptions.body = JSON.stringify({
         emailAddress,
         note,
       };
       return fetch(emailValidateEndpoint, requestOptions);
     },
-    async validatePhone(
-        phoneNumber,
-        country,
-        format = 'E164',
-        note = '',
-    ) {
+    async validatePhone(phoneNumber, country, format = "E164", note = "") {
       const requestOptions = await getRequestOptions();
-      requestOptions.method = 'POST';
+      requestOptions.method = "POST";
       requestOptions.body = JSON.stringify({
         phoneNumber,
         country,
@@ -75,22 +144,22 @@ const createRvClient = (
       return fetch(phoneValidateEndpoint, requestOptions);
     },
     async validateAddress(
-        street,
-        housenumber,
-        housenumberAddition,
-        state,
-        city,
-        postalCode,
-        country,
-        ishouseNumber = false,
-        isHouseNumberAddition = false,
-        convertToSuggestionStatus = true,
-        addressSeparator = ', ',
-        geocode = false,
-        note = '',
+      street,
+      housenumber,
+      housenumberAddition,
+      state,
+      city,
+      postalCode,
+      country,
+      ishouseNumber = false,
+      isHouseNumberAddition = false,
+      convertToSuggestionStatus = true,
+      addressSeparator = ", ",
+      geocode = false,
+      note = ""
     ) {
       const requestOptions = await getRequestOptions();
-      requestOptions.method = 'POST';
+      requestOptions.method = "POST";
       requestOptions.body = JSON.stringify({
         street,
         housenumber,
@@ -109,16 +178,16 @@ const createRvClient = (
       return fetch(addressValidateEndpoint, requestOptions);
     },
     async findAddress(
-        address,
-        country,
-        container,
-        ishouseNumber = false,
-        isHouseNumberAddition = false,
-        addressSeparator = ', ',
-        note = '',
+      address,
+      country,
+      container,
+      ishouseNumber = false,
+      isHouseNumberAddition = false,
+      addressSeparator = ", ",
+      note = ""
     ) {
       const requestOptions = await getRequestOptions();
-      requestOptions.method = 'POST';
+      requestOptions.method = "POST";
       requestOptions.body = JSON.stringify({
         address,
         country,
@@ -131,15 +200,15 @@ const createRvClient = (
       return fetch(addressFindEndpoint, requestOptions);
     },
     async retrieveAddress(
-        container,
-        ishouseNumber = false,
-        isHouseNumberAddition = false,
-        addressSeparator = ', ',
-        geocode = false,
-        note = '',
+      container,
+      isHouseNumber = false,
+      isHouseNumberAddition = false,
+      addressSeparator = ", ",
+      geocode = false,
+      note = ""
     ) {
       const requestOptions = await getRequestOptions();
-      requestOptions.method = 'POST';
+      requestOptions.method = "POST";
       requestOptions.body = JSON.stringify({
         container,
         ishouseNumber,
@@ -151,4 +220,8 @@ const createRvClient = (
       return fetch(addressRetrieveEndpoint, requestOptions);
     },
   };
+};
+
+module.exports = {
+  createRvClient,
 };

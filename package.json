@@ -12,5 +12,8 @@
   "homepage": "https://github.com/plauti/recordval-client#readme",
   "author": "Plauti BV",
   "license": "MIT",
-  "main": "index.js"
+  "main": "index.js",
+  "devDependencies": {
+    "dotenv": "17.2.3"
+  }
 }
