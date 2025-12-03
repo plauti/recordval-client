@@ -29,8 +29,7 @@ try {
     status: {
       code: 'string',
       message: 'string',
-      credit: 'boolean',
-      addressValid: 'boolean',
+      credit: 'boolean'
     }
   };
 } catch (e) {
@@ -53,22 +52,17 @@ await rvClient.validateEmail(emailToValidate, note);
 
 ````javascript
 const validateEmailResponse = {
-  ok: 'boolean',
-  errorMessage: 'string',
-  errorCode: 'string',
-  output: {
-    complete: 'string',
-    addressee: 'string',
-    domain: 'string',
-    free: 'boolean',
-    disposable: 'boolean',
-    status: {
-      code: 'string',
-      message: 'string',
-      credit: 'boolean',
-    },
-    advice: 'GREEN' | 'AMBER' | 'RED'
-  }
+  complete: 'string',
+  addressee: 'string',
+  domain: 'string',
+  free: 'boolean',
+  disposable: 'boolean',
+  status: {
+    code: 'string',
+    message: 'string',
+    credit: 'boolean',
+  },
+  advice: 'GREEN' | 'AMBER' | 'RED'
 };
 ````
 
@@ -91,21 +85,16 @@ await rvClient.validatePhone(phoneNumberAsString, country, format, note);
 
 ````javascript
 const validatePhoneResponse = {
-  ok: 'boolean',
-  errorMessage: 'string',
-  errorCode: 'string',
-  output: {
-    phoneNumber: 'string',
-    countryCode: 'string',
-    phoneType: 'FIXED_LINE' | 'MOBILE' | 'FIXED_LINE_OR_MOBILE' | 'TOLL_FREE' | 'PREMIUM_RATE' | 'SHARED_COST' |
-        'VOIP' | 'PERSONAL_NUMBER' | 'PAGER' | 'UAN' | 'VOICEMAIL' | 'UNKNOWN',
-    status: {
-      code: 'string',
-      message: 'string',
-      credit: 'boolean',
-    },
-    advice: 'GREEN' | 'AMBER' | 'RED'
-  }
+  phoneNumber: 'string',
+  countryCode: 'string',
+  phoneType: 'FIXED_LINE' | 'MOBILE' | 'FIXED_LINE_OR_MOBILE' | 'TOLL_FREE' | 'PREMIUM_RATE' | 'SHARED_COST' |
+      'VOIP' | 'PERSONAL_NUMBER' | 'PAGER' | 'UAN' | 'VOICEMAIL' | 'UNKNOWN',
+  status: {
+    code: 'string',
+    message: 'string',
+    credit: 'boolean',
+  },
+  advice: 'GREEN' | 'AMBER' | 'RED'
 };
 ````
 
@@ -150,46 +139,41 @@ await rvClient.validateAddress(
 <summary>View response structure</summary>
 
 ````javascript
-  const validateAddressResponse = {
-  ok: 'boolean',
-  errorMessage: 'string',
-  errorCode: 'string',
-  output: {
-    addresses: [
-      {
-        identifier: 'string',
-        fullAddress: 'string',
-        Street: 'string',
-        houseNumber: null | 'string',
-        houseNumberAddition: null | 'string',
-        state: 'string',
-        stateCode: 'string',
-        postalCode: 'string',
-        city: 'string',
-        country: 'string',
-        countryCode: 'string',
-        latitude: null | 'string',
-        longitude: null | 'string',
-        geoStatus: null | {
-          code: 'string',
-          message: 'string',
-          credit: 'boolean',
-        },
-        status: {
-          code: 'string',
-          message: 'string',
-          credit: 'boolean',
-        },
-        advice: 'GREEN' | 'AMBER' | 'RED'
-      }
-    ],
-    status: {
-      code: 'string',
-      message: 'string',
-      credit: 'boolean',
-    },
-    advice: 'GREEN' | 'AMBER' | 'RED'
-  }
+const validateAddressResponse = {
+  addresses: [
+    {
+      identifier: 'string',
+      fullAddress: 'string',
+      street: 'string',
+      houseNumber: null | 'string',
+      houseNumberAddition: null | 'string',
+      state: 'string',
+      stateCode: 'string',
+      postalCode: 'string',
+      city: 'string',
+      country: 'string',
+      countryCode: 'string',
+      latitude: null | 'string',
+      longitude: null | 'string',
+      geoStatus: null | {
+        code: 'string',
+        message: 'string',
+        credit: 'boolean',
+      },
+      status: {
+        code: 'string',
+        message: 'string',
+        credit: 'boolean',
+      },
+      advice: 'GREEN' | 'AMBER' | 'RED'
+    }
+  ],
+  status: {
+    code: 'string',
+    message: 'string',      
+    credit: 'boolean',
+  },
+  advice: 'GREEN' | 'AMBER' | 'RED'
 };
 ````
 
@@ -223,25 +207,19 @@ await rvClient.findAddress(
 
 ````javascript
 const findAddressResponse = {
-  ok: 'boolean',
-  errorMessage: 'string',
-  errorCode: 'string',
-  output: {
-    suggestions: [
-      {
-        container: 'string',
-        address: 'string',
-        description: 'string',
-        type: 'string',
-        highlight: 'string',
-      }
-    ],
-    status: {
-      code: 'string',
-      message: 'string',
-      credit: 'boolean',
-    },
-    advice: 'GREEN' | 'AMBER' | 'RED'
+  suggestions: [
+    {
+      container: 'string',
+      address: 'string',
+      description: 'string',
+      type: 'string',
+      highlight: 'string',
+    }
+  ],
+  status: {
+    code: 'string',
+    message: 'string',
+    credit: 'boolean',
   }
 };
 ````
@@ -254,14 +232,14 @@ Use the container value from the previous method to get the complete address inf
 
 ````javascript
 const container = 'NL|AV|DUT|ARNHEM-JANSBUITENSINGEL';
-const ishouseNumber = false; // optional - defaults to false - specifies if the housenumber should be separated from the street
+const isHouseNumber = false; // optional - defaults to false - specifies if the housenumber should be separated from the street
 const isHouseNumberAddition = false; // optional - defaults to false - specifies if the addition should be separated from the housebumber
 const addressSeparator = '\n' | ', '; // optional - defaults to ', ' - specifies what separtor is used for the fullAddress
 const geocode = false; // optional - defaults to false - specifies if geocode information should be returned
 const note = 'note that is written in the transaction log'; // optional - defaults to ''
 await rvClient.retrieveAddress(
     container,
-    ishouseNumber,
+    isHouseNumber,
     isHouseNumberAddition,
     addressSeparator,
     geocode,
@@ -274,35 +252,24 @@ await rvClient.retrieveAddress(
 
 ````javascript
 const retrieveAddressResponse = {
-  ok: 'boolean',
-  errorMessage: 'string',
-  errorCode: 'string',
-  output: {
-    address: {
-      identifier: 'string',
-      fullAddress: 'string',
-      Street: 'string',
-      houseNumber: null | 'string',
-      houseNumberAddition: null | 'string',
-      state: 'string',
-      stateCode: 'string',
-      postalCode: 'string',
-      city: 'string',
-      country: 'string',
-      countryCode: 'string',
-      latitude: null | 'string',
-      longitude: null | 'string',
-      geoStatus: null | {
-        code: 'string',
-        message: 'string',
-        credit: 'boolean',
-      },
-      status: {
-        code: 'string',
-        message: 'string',
-        credit: 'boolean',
-      },
-      advice: 'GREEN' | 'AMBER' | 'RED'
+  address: {
+    identifier: 'string',
+    fullAddress: 'string',
+    street: 'string',
+    houseNumber: null | 'string',
+    houseNumberAddition: null | 'string',
+    state: 'string',
+    stateCode: 'string',
+    postalCode: 'string',
+    city: 'string',
+    country: 'string',
+    countryCode: 'string',
+    latitude: null | 'string',
+    longitude: null | 'string',
+    geoStatus: null | {
+      code: 'string',
+      message: 'string',
+      credit: 'boolean',
     },
     status: {
       code: 'string',
@@ -310,6 +277,11 @@ const retrieveAddressResponse = {
       credit: 'boolean',
     },
     advice: 'GREEN' | 'AMBER' | 'RED'
+  },
+  status: {
+    code: 'string',
+    message: 'string',
+    credit: 'boolean',
   }
 };
 ````

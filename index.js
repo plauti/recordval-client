@@ -2,15 +2,15 @@ const createRvClient = (
     orgId,
     publicKey,
     privateKey,
-    apiBaseUrl = 'https://dq-api.plauti.io',
+    apiBaseUrl = 'jarvis.plauti.com/v3', 
+    orgType = 'SF'
 ) => {
-  const myCreditsEndpoint = `${apiBaseUrl}/v1/info/credit`;
-  // V1 endpoints are deprecated
-  const emailValidateEndpoint = `${apiBaseUrl}/v2/email/validate`;
-  const phoneValidateEndpoint = `${apiBaseUrl}/v2/phone/validate`;
-  const addressValidateEndpoint = `${apiBaseUrl}/v2/address/validate`;
-  const addressFindEndpoint = `${apiBaseUrl}/v2/address/find`;
-  const addressRetrieveEndpoint = `${apiBaseUrl}/v2/address/retrieve`;
+  const myCreditsEndpoint = `${apiBaseUrl}/info/credits`;
+  const emailValidateEndpoint = `${apiBaseUrl}/validation/email/validate`;
+  const phoneValidateEndpoint = `${apiBaseUrl}/validation/phone/validate`;
+  const addressValidateEndpoint = `${apiBaseUrl}/validation/address/validate`;
+  const addressFindEndpoint = `${apiBaseUrl}/validation/address/search`;
+  const addressRetrieveEndpoint = `${apiBaseUrl}/validation/address/retrieve`;
 
   if (!publicKey || !privateKey) {
     throw Error(
@@ -19,23 +19,77 @@ const createRvClient = (
     );
   }
 
-  const sha1 = async (seed) => {
-    const enc = new TextEncoder();
-    const hash = await crypto.subtle.digest('SHA-1', enc.encode(seed));
-    return Array.from(new Uint8Array(hash)).
-        map(v => v.toString(16).padStart(2, '0')).
-        join('');
-  };
+  const pemToArrayBuffer = pem => {
+    // Remove the PEM header and footer
+    const b = pem.replace(/-----(BEGIN|END) [A-Z ]+-----/g, '').replace(/\s+/g, '');
+    const binaryString = window.atob(b);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  const importPrivateKey =  async (privateKeyBuffer) => {
+    const key = await window.crypto.subtle.importKey(
+      "pkcs8",
+      privateKeyBuffer,
+      {
+          name: "RSASSA-PKCS1-v1_5",
+          hash: { name: "SHA-256" },
+      },
+      true, 
+      ["sign"] 
+    );
+
+    return key;
+  }
+
+  const encodePayload = (payload) => {
+    const encoder = new TextEncoder();
+    return encoder.encode(payload);
+  }
+
+  const sign = async (privateKey, encodedPayload) => {
+    const signature = await window.crypto.subtle.sign(
+        {
+            name: "RSASSA-PKCS1-v1_5",
+        },
+        privateKey,
+        encodedPayload
+    );
+
+    return signature;
+  }
+
+  const toHex = data => {
+    return Array.from(new Uint8Array(data))
+    .map(b => ('00' + b.toString(16)).slice(-2))
+    .join('');
+  }
+
+  const createSignature = async (payload, privateKeyPem) => {
+    const privateKeyBuffer = pemToArrayBuffer(privateKeyPem);
+    const importedPrivateKey = await importPrivateKey(privateKeyBuffer)
+    const encodeData = encodePayload(payload)
+    const signature = await sign(importedPrivateKey, encodeData)
+
+    return toHex(signature);
+  }
+
   const getRequestOptions = async () => {
-    // The number of milliseconds since January 1, 1970, 00:00:00 GMT
-    const timestamp = Date.now();
-    const hash = await sha1(publicKey + timestamp.toString() + privateKey);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signaturePayload = `${orgType}:${orgId}:${timestamp}`
+    const hash = await createSignature(signaturePayload, privateKey);
+
     return {
       'headers': {
-        'plauti-dq-time': timestamp.toString(),
-        'plauti-dq-apikey': publicKey,
-        'plauti-dq-hash': hash,
-        'plauti-dq-org': orgId,
+        'x-jarvis-timestamp': timestamp,
+        'x-jarvis-apikey': publicKey,
+        'x-jarvis-signature': hash,
+        'x-jarvis-orgid': orgId,
+        'x-jarvis-orgtype': orgType,
         'Content-Type': 'application/json',
       },
     };
@@ -52,10 +106,10 @@ const createRvClient = (
     ) {
       const requestOptions = await getRequestOptions();
       requestOptions.method = 'POST';
-      requestOptions.body = {
+      requestOptions.body = JSON.stringify({
         emailAddress,
         note,
-      };
+      });
       return fetch(emailValidateEndpoint, requestOptions);
     },
     async validatePhone(
@@ -132,7 +186,7 @@ const createRvClient = (
     },
     async retrieveAddress(
         container,
-        ishouseNumber = false,
+        isHouseNumber = false,
         isHouseNumberAddition = false,
         addressSeparator = ', ',
         geocode = false,
@@ -142,7 +196,7 @@ const createRvClient = (
       requestOptions.method = 'POST';
       requestOptions.body = JSON.stringify({
         container,
-        ishouseNumber,
+        isHouseNumber,
         isHouseNumberAddition,
         addressSeparator,
         geocode,
